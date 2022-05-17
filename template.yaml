@@ -1,3 +1,5 @@
+
+
 # This is the SAM template that represents the architecture of your serverless application
 # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-template-basics.html
 
@@ -6,7 +8,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Topfan-Lite-dev
-
 # Transform section specifies one or more macros that AWS CloudFormation uses to process your template
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/transform-section-structure.html
 Transform:
@@ -15,7 +16,7 @@ Transform:
 Parameters:
   StageName:
     Type: String
-    Default: Prod
+    Default: dev
 
 # Resources declares the AWS resources that you want to include in the stack
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html
@@ -25,10 +26,10 @@ Resources:
 
   # This is a Lambda function config associated with the source code: get-all-items.js
  
-  usersFunction:
+  users:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: usersFunction
+      FunctionName: users
       CodeUri: users/
       Handler: src/handlers/users.handler
       Runtime: nodejs14.x
@@ -36,21 +37,31 @@ Resources:
         - x86_64
       MemorySize: 128
       Timeout: 100
-      Description: A simple example includes a HTTP get method to get all items from a DynamoDB table.
+      Description: This function will handle the users methods and events  
       Policies:
         # Give Create/Read/Update/Delete Permissions to the SampleTable
         - DynamoDBCrudPolicy:
-            TableName: !Ref MyMarketItems
+            TableName: !Ref TopFansDb
       Environment:
         Variables:
           # Make table name accessible as environment variable from function code during execution
-          SAMPLE_TABLE: !Ref MyMarketItems
+          SAMPLE_TABLE: !Ref TopFansDb
       Events:
         GetAllUsersApi:
           Type: HttpApi
           Properties:
-            Path: /users
+            Path: /users # Create user
             Method: GET
+            ApiId: !Ref HttpApi
+            TimeoutInMillis: 15000
+            PayloadFormatVersion: "2.0"
+            RouteSettings:
+              ThrottlingBurstLimit: 600
+        CreateUserApi:
+          Type: HttpApi
+          Properties:
+            Path: /users # Create user
+            Method: POST
             ApiId: !Ref HttpApi
             TimeoutInMillis: 15000
             PayloadFormatVersion: "2.0"
@@ -59,7 +70,59 @@ Resources:
         UpsertUsersApi:
           Type: HttpApi
           Properties:
-            Path: /users
+            Path: /users # Update user
+            Method: PUT
+            ApiId: !Ref HttpApi
+            TimeoutInMillis: 15000
+            PayloadFormatVersion: "2.0"
+            RouteSettings:
+              ThrottlingBurstLimit: 600
+        SignInAPI:
+          Type: HttpApi
+          Properties:
+            Path: /users/login # Login
+            Method: POST
+            ApiId: !Ref HttpApi
+            TimeoutInMillis: 15000
+            PayloadFormatVersion: "2.0"
+            RouteSettings:
+              ThrottlingBurstLimit: 600
+        VerifyUserAPI:
+          Type: HttpApi
+          Properties:
+            Path: /users/verify # Verify User
+            Method: POST
+            ApiId: !Ref HttpApi
+            TimeoutInMillis: 15000
+            PayloadFormatVersion: "2.0"
+            RouteSettings:
+              ThrottlingBurstLimit: 600
+
+  feeds:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: feeds
+      CodeUri: feeds/
+      Handler: src/handlers/feeds.handler
+      Runtime: nodejs14.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: This function will handle the users posts and feeds
+      Policies:
+        # Give Create/Read/Update/Delete Permissions to the SampleTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TopFansDb
+      Environment:
+        Variables:
+          # Make table name accessible as environment variable from function code during execution
+          SAMPLE_TABLE: !Ref TopFansDb
+      Events:
+        createUser:
+          Type: HttpApi
+          Properties:
+            Path: /feeds # Dummy route
             Method: PUT
             ApiId: !Ref HttpApi
             TimeoutInMillis: 15000
@@ -67,69 +130,77 @@ Resources:
             RouteSettings:
               ThrottlingBurstLimit: 600
 
-    userInfo:
+
+  category:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: usersFunction
-      CodeUri: users/
-      Handler: src/handlers/users.updateUserInfo
+      FunctionName: category
+      CodeUri: category/
+      Handler: src/handlers/categories.handler
       Runtime: nodejs14.x
       Architectures:
         - x86_64
       MemorySize: 128
       Timeout: 100
-      Description: A simple example includes a HTTP get method to get all items from a DynamoDB table.
+      Description: This function will handle the users categories
       Policies:
-        # Give Create/Read/Update/Delete Permissions to the SampleTable
         - DynamoDBCrudPolicy:
-            TableName: !Ref usersInfo
+            TableName: !Ref Category
       Environment:
         Variables:
-          # Make table name accessible as environment variable from function code during execution
-          SAMPLE_TABLE: !Ref 
+          SAMPLE_TABLE: !Ref Category
       Events:
-        createUser:
+        createCategory:
           Type: HttpApi
           Properties:
-            Path: /updateUserInfo/{id}
-            Method: Patch
-            ApiId: !Ref HttpApi
-            TimeoutInMillis: 15000
-            PayloadFormatVersion: "2.0"
-            RouteSettings:
-              ThrottlingBurstLimit: 600
-              userInfo:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: usersFunction
-      CodeUri: users/
-      Handler: src/handlers/users.createUser
-      Runtime: nodejs14.x
-      Architectures:
-        - x86_64
-      MemorySize: 128
-      Timeout: 100
-      Description: A simple example includes a HTTP get method to get all items from a DynamoDB table.
-      Policies:
-        # Give Create/Read/Update/Delete Permissions to the SampleTable
-        - DynamoDBCrudPolicy:
-            TableName: !Ref MyMarketItems
-      Environment:
-        Variables:
-          # Make table name accessible as environment variable from function code during execution
-          SAMPLE_TABLE: !Ref MyMarketItems
-      Events:
-        createUser:
-          Type: HttpApi
-          Properties:
-            Path: /createUser
+            Path: /category
             Method: POST
             ApiId: !Ref HttpApi
             TimeoutInMillis: 15000
             PayloadFormatVersion: "2.0"
             RouteSettings:
               ThrottlingBurstLimit: 600
-      
+        updateCategory:
+          Type: HttpApi
+          Properties:
+            Path: /category/{pk}/{sk}
+            Method: PUT
+            ApiId: !Ref HttpApi
+            TimeoutInMillis: 15000
+            PayloadFormatVersion: "2.0"
+            RouteSettings:
+              ThrottlingBurstLimit: 600
+        getAllCategory:
+          Type: HttpApi
+          Properties:
+            Path: /category
+            Method: GET
+            ApiId: !Ref HttpApi
+            TimeoutInMillis: 15000
+            PayloadFormatVersion: "2.0"
+            RouteSettings:
+              ThrottlingBurstLimit: 600
+        getCategoryById:
+          Type: HttpApi
+          Properties:
+            Path: /category/{pk}/{sk}
+            Method: GET
+            ApiId: !Ref HttpApi
+            TimeoutInMillis: 15000
+            PayloadFormatVersion: "2.0"
+            RouteSettings:
+              ThrottlingBurstLimit: 600
+        deleteCategory:
+          Type: HttpApi
+          Properties:
+            Path: /category/{pk}/{sk}
+            Method: DELETE
+            ApiId: !Ref HttpApi
+            TimeoutInMillis: 15000
+            PayloadFormatVersion: "2.0"
+            RouteSettings:
+              ThrottlingBurstLimit: 600
+
   # # Simple syntax to create a DynamoDB table with a single attribute primary key, more in
   # # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlesssimpletable
 
@@ -140,23 +211,52 @@ Resources:
       StageName: !Ref StageName
       DefaultRouteSettings:
         ThrottlingBurstLimit: 200
+      CorsConfiguration:
+        AllowOrigins:
+        - "*"
+        AllowHeaders:
+        - "*"
+        AllowMethods:
+        - GET
+        - PUT
+        - POST
+        - DELETE
+        - PATCH
+        MaxAge: 120
+        AllowCredentials: false
       RouteSettings:
-        "GET /feeds":
-          ThrottlingBurstLimit: 500 
-        "PUT /feeds":
-          ThrottlingBurstLimit: 500 
-        "GET /users":
+        "POST /users":
           ThrottlingBurstLimit: 500 
         "PUT /users":
           ThrottlingBurstLimit: 500 
+        "PUT /feeds":
+          ThrottlingBurstLimit: 500 
 
 
 
-  # DynamoDB table to store item: {id: &lt;ID&gt;, name: &lt;NAME&gt;}
-  MyMarketItems:
+  TopFansDb:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: MyMarketItems
+      TableName: TopFansDbTable
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      ProvisionedThroughput:
+        ReadCapacityUnits: 0
+        WriteCapacityUnits: 0
+  
+  Category:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Category
       AttributeDefinitions:
         - AttributeName: pk
           AttributeType: S
@@ -172,27 +272,55 @@ Resources:
         ReadCapacityUnits: 0
         WriteCapacityUnits: 0
 
-
-  usersInfo:
-    Type: AWS::DynamoDB::Table
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      TableName: usersInfo
-      AttributeDefinitions:
-        - AttributeName: email
-          AttributeType: s
-        - AttributeName: user_id
-          AttributeType: s
-      KeySchema:
-        - AttributeName: email
-          KeyType: HASH
-        - AttributeName: user_id
-          KeyType: RANGE
-      BillingMode: PAY_PER_REQUEST
-      ProvisionedThroughput:
-        ReadCapacityUnits: 0
-        WriteCapacityUnits: 0
-
+      Scheme: internet-facing 
+      Subnets: !Ref topfan-dev-subnet      
+      SecurityGroups:
+      - !Ref topfanlite-dev-sg
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: usersInvokePermission
+    Properties:
+      TargetType: lambda
+      Targets:
+      - Id: !GetAtt users.Arn
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: feedsInvokePermission
+    Properties:
+      TargetType: lambda
+      Targets:
+      - Id: !GetAtt feeds.Arn
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: categoryInvokePermission
+    Properties:
+      TargetType: lambda
+      Targets:
+      - Id: !GetAtt category.Arn        
+  HttpListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+      - TargetGroupArn: !Ref TargetGroup
+        Type: forward
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      Port: 443
+      Protocol: HTTPS
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http to client host
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
 Outputs:
-  WebEndpoint:
-    Description: "API Gateway endpoint URL for Prod stage"
-    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  LoadBalancerDNSNAme:
+    Value: !GetAtt LoadBalancer.DNSName        
