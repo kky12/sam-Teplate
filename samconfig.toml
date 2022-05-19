@@ -9,5 +9,3 @@ region = "us-east-1"
 capabilities = "CAPABILITY_IAM"
 image_repositories = []
 parameter_overrides = "StageName=\"Prod\""
-
-
